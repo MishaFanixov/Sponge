@@ -164,6 +164,8 @@ import org.spongepowered.api.world.portal.PortalType;
 import org.spongepowered.api.world.portal.PortalTypes;
 import org.spongepowered.api.world.schematic.PaletteType;
 import org.spongepowered.api.world.schematic.PaletteTypes;
+import org.spongepowered.api.world.server.TicketType;
+import org.spongepowered.api.world.server.TicketTypes;
 import org.spongepowered.api.world.teleport.TeleportHelperFilter;
 import org.spongepowered.api.world.teleport.TeleportHelperFilters;
 import org.spongepowered.api.world.weather.WeatherType;
@@ -274,6 +276,7 @@ import org.spongepowered.common.util.VecHelper;
 import org.spongepowered.common.world.portal.EndPortalType;
 import org.spongepowered.common.world.portal.NetherPortalType;
 import org.spongepowered.common.world.schematic.SpongePaletteType;
+import org.spongepowered.common.world.server.SpongeTicketType;
 import org.spongepowered.common.world.teleport.ConfigTeleportHelperFilter;
 import org.spongepowered.common.world.teleport.DefaultTeleportHelperFilter;
 import org.spongepowered.common.world.teleport.FlyingTeleportHelperFilter;
@@ -282,6 +285,7 @@ import org.spongepowered.common.world.teleport.SurfaceOnlyTeleportHelperFilter;
 import org.spongepowered.common.world.weather.SpongeWeatherType;
 import org.spongepowered.math.vector.Vector2d;
 import org.spongepowered.math.vector.Vector3d;
+import org.spongepowered.math.vector.Vector3i;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -877,6 +881,14 @@ public final class SpongeRegistryLoaders {
             l.add(TeleportHelperFilters.FLYING, k -> new FlyingTeleportHelperFilter());
             l.add(TeleportHelperFilters.NO_PORTAL, k -> new NoPortalTeleportHelperFilter());
             l.add(TeleportHelperFilters.SURFACE_ONLY, k -> new SurfaceOnlyTeleportHelperFilter());
+        });
+    }
+
+    public static RegistryLoader<TicketType<?>> ticketType() {
+        return RegistryLoader.of(l -> {
+            l.add(TicketTypes.FORCED, k -> (TicketType<?>) net.minecraft.server.level.TicketType.FORCED);
+            l.add(TicketTypes.PORTAL, k -> (TicketType<?>) net.minecraft.server.level.TicketType.PORTAL);
+            l.add(TicketTypes.POST_TELEPORT, k -> (TicketType<?>) net.minecraft.server.level.TicketType.POST_TELEPORT);
         });
     }
 

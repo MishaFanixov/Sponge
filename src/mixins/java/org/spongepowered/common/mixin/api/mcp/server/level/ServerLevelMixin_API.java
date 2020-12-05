@@ -56,6 +56,7 @@ import org.spongepowered.api.util.Ticks;
 import org.spongepowered.api.world.BlockChangeFlag;
 import org.spongepowered.api.world.ChunkRegenerateFlag;
 import org.spongepowered.api.world.generation.ChunkGenerator;
+import org.spongepowered.api.world.server.ChunkManager;
 import org.spongepowered.api.world.server.ServerLocation;
 import org.spongepowered.api.world.server.WorldTemplate;
 import org.spongepowered.api.world.server.storage.ServerWorldProperties;
@@ -303,4 +304,10 @@ public abstract class ServerLevelMixin_API extends LevelMixin_API<org.spongepowe
     public ChunkLayout chunkLayout() {
         return SpongeChunkLayout.INSTANCE;
     }
+
+    @Override
+    public ChunkManager chunkManager() {
+        return (ChunkManager) this.shadow$getChunkSource().chunkMap;
+    }
+
 }

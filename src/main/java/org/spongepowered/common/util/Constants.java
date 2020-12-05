@@ -440,6 +440,12 @@ public final class Constants {
         public static final String CHUNK_DATA_SECTIONS = "Sections";
     }
 
+    public static final class ChunkTicket {
+
+        public static final int MAXIMUM_CHUNK_TICKET_LEVEL = 33;
+        public static final int DEFAULT_CHUNK_TICKET_DISTANCE = 9;
+    }
+
     public static final class Networking {
 
         public static final int MAX_STRING_LENGTH_BYTES = Short.MAX_VALUE;
