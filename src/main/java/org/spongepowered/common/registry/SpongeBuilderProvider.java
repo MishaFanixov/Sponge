@@ -35,6 +35,7 @@ import org.spongepowered.api.advancement.criteria.trigger.FilteredTrigger;
 import org.spongepowered.api.advancement.criteria.trigger.Trigger;
 import org.spongepowered.api.block.BlockSnapshot;
 import org.spongepowered.api.block.BlockState;
+import org.spongepowered.api.block.entity.BlockEntityArchetype;
 import org.spongepowered.api.command.Command;
 import org.spongepowered.api.command.CommandResult;
 import org.spongepowered.api.command.parameter.Parameter;
@@ -115,6 +116,7 @@ import org.spongepowered.api.world.generation.config.NoiseGeneratorConfig;
 import org.spongepowered.api.world.generation.config.WorldGenerationConfig;
 import org.spongepowered.api.world.generation.config.noise.NoiseConfig;
 import org.spongepowered.api.world.generation.config.structure.StructureGenerationConfig;
+import org.spongepowered.api.world.schematic.Schematic;
 import org.spongepowered.api.world.server.WorldTemplate;
 import org.spongepowered.api.world.WorldBorder;
 import org.spongepowered.api.world.WorldTypeEffect;
@@ -131,6 +133,7 @@ import org.spongepowered.common.advancement.criterion.SpongeScoreCriterionBuilde
 import org.spongepowered.common.ban.SpongeBanBuilder;
 import org.spongepowered.common.block.SpongeBlockSnapshotBuilder;
 import org.spongepowered.common.block.SpongeBlockStateBuilder;
+import org.spongepowered.common.block.entity.SpongeBlockEntityArchetypeBuilder;
 import org.spongepowered.common.command.SpongeParameterizedCommandBuilder;
 import org.spongepowered.common.command.parameter.SpongeParameterKeyBuilder;
 import org.spongepowered.common.command.parameter.flag.SpongeFlagBuilder;
@@ -208,6 +211,7 @@ import org.spongepowered.common.world.generation.config.SpongeFlatGeneratorConfi
 import org.spongepowered.common.world.generation.config.SpongeNoiseGeneratorConfig;
 import org.spongepowered.common.world.generation.config.noise.SpongeNoiseConfig;
 import org.spongepowered.common.world.generation.config.structure.SpongeStructureGenerationConfigBuilder;
+import org.spongepowered.common.world.schematic.SpongeSchematicBuilder;
 import org.spongepowered.common.world.server.SpongeLocatableBlockBuilder;
 import org.spongepowered.common.world.border.SpongeWorldBorderBuilder;
 import org.spongepowered.common.world.SpongeWorldTypeEffect;
@@ -290,8 +294,8 @@ public final class SpongeBuilderProvider implements BuilderProvider {
                 .register(TradeOfferGenerator.Builder.class, SpongeTradeOfferGenerator.Builder::new)
                 .register(ItemStackGenerator.Builder.class, SpongeItemStackGenerator.Builder::new)
                 .register(EntityArchetype.Builder.class, SpongeEntityArchetypeBuilder::new)
-                //            .register(BlockEntityArchetype.Builder.class, SpongeBlockEntityArchetypeBuilder::new)
-                //            .register(Schematic.Builder.class, SpongeSchematicBuilder::new)
+                .register(BlockEntityArchetype.Builder.class, SpongeBlockEntityArchetypeBuilder::new)
+                .register(Schematic.Builder.class, SpongeSchematicBuilder::new)
                 .register(Inventory.Builder.class, SpongeInventoryBuilder::new)
                 .register(ViewableInventory.Builder.class, SpongeViewableInventoryBuilder::new)
                 .register(InventoryTransactionResult.Builder.class, InventoryTransactionResultImpl.Builder::new)

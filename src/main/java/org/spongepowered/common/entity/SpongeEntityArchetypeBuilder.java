@@ -24,6 +24,9 @@
  */
 package org.spongepowered.common.entity;
 
+import net.minecraft.nbt.CompoundTag;
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.spongepowered.api.Sponge;
 import org.spongepowered.api.data.DataManipulator;
 import org.spongepowered.api.data.Key;
@@ -40,17 +43,18 @@ import org.spongepowered.common.accessor.world.entity.EntityAccessor;
 import org.spongepowered.common.data.nbt.validation.DelegateDataValidator;
 import org.spongepowered.common.data.nbt.validation.ValidationTypes;
 import org.spongepowered.common.util.Constants;
+import org.spongepowered.math.vector.Vector3d;
 
 import java.util.Objects;
 import java.util.Optional;
-import net.minecraft.nbt.CompoundTag;
 
 public class SpongeEntityArchetypeBuilder extends AbstractDataBuilder<EntityArchetype> implements EntityArchetype.Builder {
 
-    EntityType entityType = null;
-    DataContainer entityData;
-    CompoundTag compound;
-    DataManipulator.Mutable manipulator;
+    @Nullable EntityType<@NonNull ?> entityType = null;
+    @Nullable DataContainer entityData;
+    @Nullable CompoundTag compound;
+    DataManipulator.@Nullable Mutable manipulator;
+    @Nullable Vector3d position;
 
     public SpongeEntityArchetypeBuilder() {
         super(EntityArchetype.class, Constants.Sponge.EntityArchetype.BASE_VERSION);
@@ -91,7 +95,7 @@ public class SpongeEntityArchetypeBuilder extends AbstractDataBuilder<EntityArch
     }
 
     @Override
-    public EntityArchetype.Builder type(final EntityType type) {
+    public EntityArchetype.Builder type(final EntityType<@NonNull ?> type) {
         Objects.requireNonNull(type, "EntityType cannot be null!");
         if (this.entityType != type) {
             this.entityData = null;
@@ -111,7 +115,9 @@ public class SpongeEntityArchetypeBuilder extends AbstractDataBuilder<EntityArch
         compound.remove(Constants.UUID);
         compound.remove(Constants.UUID_MOST);
         compound.remove(Constants.UUID_LEAST);
+        compound.remove(Constants.Entity.ENTITY_POSITION);
         compound.putBoolean(Constants.Sponge.EntityArchetype.REQUIRES_EXTRA_INITIAL_SPAWN, true);
+        this.position = entity.position();
         this.compound = compound;
         return this;
     }

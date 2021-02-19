@@ -295,7 +295,8 @@ public abstract class LevelMixin_API<W extends World<W, L>, L extends Location<W
         final Vector3i rawVolMin = Objects.requireNonNull(min, "min").min(Objects.requireNonNull(max, "max"));
         final Vector3i adjustedVolMin = rawVolMin.sub(Objects.requireNonNull(origin, "origin"));
         final Vector3i volMax = max.max(min);
-        final SpongeArchetypeVolume volume = new SpongeArchetypeVolume(adjustedVolMin, volMax.sub(rawVolMin).add(1, 1, 1), this.registries());
+        final Vector3i size = volMax.sub(rawVolMin).add(1, 1, 1);
+        final SpongeArchetypeVolume volume = new SpongeArchetypeVolume(adjustedVolMin, size, this.registries());
 
         this.blockStateStream(min, max, StreamOptions.lazily())
             .apply(VolumeCollectors.of(

@@ -30,6 +30,7 @@ import org.spongepowered.api.block.BlockType;
 import org.spongepowered.api.block.entity.BlockEntityArchetype;
 import org.spongepowered.api.entity.EntityArchetype;
 import org.spongepowered.api.fluid.FluidState;
+import org.spongepowered.api.registry.Registry;
 import org.spongepowered.api.registry.RegistryHolder;
 import org.spongepowered.api.registry.RegistryTypes;
 import org.spongepowered.api.world.biome.Biome;
@@ -64,6 +65,8 @@ public class SpongeArchetypeVolume extends AbstractVolumeBuffer implements Arche
     private final ArrayMutableBlockBuffer blocks;
     private final BlockEntityArchetypeVolume.Mutable<@NonNull ?> blockEntities;
     private final ObjectArrayMutableEntityArchetypeBuffer entities;
+    private final Registry<Biome> biomeRegistry;
+    private final Registry<BlockType> blockTypeRegistry;
 
     public SpongeArchetypeVolume(final Vector3i start, final Vector3i size, final RegistryHolder registries) {
         super(start, size);
@@ -76,6 +79,9 @@ public class SpongeArchetypeVolume extends AbstractVolumeBuffer implements Arche
             size
         );
         this.entities = new ObjectArrayMutableEntityArchetypeBuffer(start, size);
+        this.biomeRegistry = registries.registry(RegistryTypes.BIOME);
+        // Blocks are still global, they won't exist in the root codec.
+        this.blockTypeRegistry = (Registry<BlockType>) (Object) net.minecraft.core.Registry.BLOCK;
     }
 
     @Override
@@ -105,6 +111,11 @@ public class SpongeArchetypeVolume extends AbstractVolumeBuffer implements Arche
     @Override
     public Collection<EntityArchetype> entityArchetypes() {
         return this.entities.entityArchetypes();
+    }
+
+    @Override
+    public Collection<EntityArchetypeEntry> entityArchetypesByPosition() {
+        return this.entities.entityArchetypesByPosition();
     }
 
     @Override
@@ -221,5 +232,15 @@ public class SpongeArchetypeVolume extends AbstractVolumeBuffer implements Arche
     @Override
     public boolean setBiome(final int x, final int y, final int z, final Biome biome) {
         return this.biomes.setBiome(x, y, z, biome);
+    }
+
+    @Override
+    public Registry<BlockType> blockStateRegistry() {
+        return this.blockTypeRegistry;
+    }
+
+    @Override
+    public Registry<Biome> biomeRegistry() {
+        return this.biomeRegistry;
     }
 }

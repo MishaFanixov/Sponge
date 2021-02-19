@@ -70,6 +70,7 @@ public abstract class LevelChunkMixin_API implements Chunk {
     @Shadow @Final private Level level;
 
     @Shadow public abstract void shadow$setInhabitedTime(long p_177415_1_);
+    @Shadow public abstract void shadow$setUnsaved(boolean unsaved);
     //@formatter:on
 
     @Override
@@ -84,6 +85,7 @@ public abstract class LevelChunkMixin_API implements Chunk {
         final int posKey = maskedY << WIDTH_BITS + WIDTH_BITS | maskedZ << WIDTH_BITS | maskedX;
         biomes[posKey] = (net.minecraft.world.level.biome.Biome) (Object) biome;
 
+        this.shadow$setUnsaved(true);
         return true;
     }
 
