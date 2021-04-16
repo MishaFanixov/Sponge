@@ -44,7 +44,7 @@ public abstract class ChunkMapMixin_API implements org.spongepowered.api.world.s
     @Shadow @Final private net.minecraft.server.level.ServerLevel level;
 
     @Override
-    public ServerWorld getWorld() {
+    public ServerWorld world() {
         return (ServerWorld) this.level;
     }
 
@@ -54,7 +54,7 @@ public abstract class ChunkMapMixin_API implements org.spongepowered.api.world.s
     }
 
     @Override
-    public Ticks getTimeLeft(final Ticket<?> ticket) {
+    public Ticks timeLeft(final Ticket<?> ticket) {
         return ((ChunkMapBridge) this).bridge$distanceManager().bridge$getTimeLeft(ticket);
     }
 
@@ -64,7 +64,7 @@ public abstract class ChunkMapMixin_API implements org.spongepowered.api.world.s
             throw new IllegalArgumentException("The radius must be positive.");
         }
         return ((ChunkMapBridge) this).bridge$distanceManager()
-                .bridge$registerTicket(this.getWorld(), type, chunkPosition, value, radius);
+                .bridge$registerTicket(this.world(), type, chunkPosition, value, radius);
     }
 
     @Override
@@ -78,7 +78,7 @@ public abstract class ChunkMapMixin_API implements org.spongepowered.api.world.s
     }
 
     @Override
-    public <T> Collection<Ticket<T>> getTickets(final TicketType<T> type) {
+    public <T> Collection<Ticket<T>> findTickets(final TicketType<T> type) {
         return ((ChunkMapBridge) this).bridge$distanceManager().bridge$getTickets(type);
     }
 
