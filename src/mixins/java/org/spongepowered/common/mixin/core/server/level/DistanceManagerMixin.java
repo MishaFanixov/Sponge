@@ -64,15 +64,10 @@ public abstract class DistanceManagerMixin implements DistanceManagerBridge {
     @Override
     @SuppressWarnings({ "unchecked" })
     public boolean bridge$checkTicketValid(final Ticket<?> ticket) {
-        // is the ticket in our manager?
+        // Only report the ticket is valid if it's associated with this manager.
         final net.minecraft.server.level.Ticket<?> nativeTicket = ((net.minecraft.server.level.Ticket<?>) (Object) ticket);
-        if (nativeTicket.getType() == TicketType.FORCED) {
-            final TicketAccessor<ChunkPos> ticketAccessor = ((TicketAccessor<ChunkPos>) ticket);
-            final ChunkPos chunkPos = ticketAccessor.accessor$key();
-            if (this.tickets.computeIfAbsent(chunkPos.toLong(), x -> SortedArraySet.create(4)).contains(nativeTicket)) {
-                // check to see if it's expired.
-                return ticketAccessor.invoker$timedOut(this.ticketTickCounter);
-            }
+        if (tickets.containsValue(nativeTicket)) {
+            return ((TicketAccessor<ChunkPos>) ticket).invoker$timedOut(this.ticketTickCounter);
         }
         return false;
     }

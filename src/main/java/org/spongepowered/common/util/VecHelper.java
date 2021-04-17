@@ -141,7 +141,7 @@ public final class VecHelper {
         if (vector == null) {
             return null;
         }
-        return new ChunkPos(vector.getX(), vector.getZ());
+        return new ChunkPos(vector.x(), vector.x());
     }
 
     // === MC Vector3d --> flow Vector3d ==

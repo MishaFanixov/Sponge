@@ -276,7 +276,6 @@ import org.spongepowered.common.util.VecHelper;
 import org.spongepowered.common.world.portal.EndPortalType;
 import org.spongepowered.common.world.portal.NetherPortalType;
 import org.spongepowered.common.world.schematic.SpongePaletteType;
-import org.spongepowered.common.world.server.SpongeTicketType;
 import org.spongepowered.common.world.teleport.ConfigTeleportHelperFilter;
 import org.spongepowered.common.world.teleport.DefaultTeleportHelperFilter;
 import org.spongepowered.common.world.teleport.FlyingTeleportHelperFilter;
@@ -285,7 +284,6 @@ import org.spongepowered.common.world.teleport.SurfaceOnlyTeleportHelperFilter;
 import org.spongepowered.common.world.weather.SpongeWeatherType;
 import org.spongepowered.math.vector.Vector2d;
 import org.spongepowered.math.vector.Vector3d;
-import org.spongepowered.math.vector.Vector3i;
 
 import java.net.MalformedURLException;
 import java.net.URL;
