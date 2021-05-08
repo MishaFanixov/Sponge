@@ -307,7 +307,6 @@ public final class Constants {
             public static final DataQuery LENGTH = of("Length");
             public static final DataQuery OFFSET = of("Offset");
             public static final DataQuery BLOCK_PALETTE = of("BlockPalette");
-            public static final DataQuery BLOCK_PALETTE_MAX = of("BlockPaletteMax");
             public static final DataQuery BLOCK_DATA = of("BlockData");
             public static final DataQuery BIOME_DATA = of("BiomeData");
             public static final DataQuery BLOCKENTITY_DATA = of("BlockEntities");
@@ -317,13 +316,6 @@ public final class Constants {
             public static final DataQuery ENTITIES_ID = of("Id");
             public static final DataQuery ENTITIES_POS = of("Pos");
             public static final DataQuery BIOME_PALETTE = of("BiomePalette");
-            public static final DataQuery BIOME_PALETTE_MAX = of("BiomePaletteMax");
-
-            public static final DataQuery BLOCK_ENTITY_PALETTE = of("BlockEntityPalette");
-            public static final DataQuery BLOCK_ENTITY_PALETTE_MAX = of("BlockEntityPaletteMax");
-
-            public static final DataQuery ENTITY_TYPE_PALETTE = of("EntityTypePalette");
-            public static final DataQuery ENTITY_TYPE_PALETTE_MAX = of("EntityTypePaletteMax");
 
             public static final class Versions {
 

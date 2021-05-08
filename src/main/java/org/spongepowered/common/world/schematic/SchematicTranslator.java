@@ -83,7 +83,6 @@ public class SchematicTranslator implements DataTranslator<Schematic> {
     private static final ConcurrentSkipListSet<String> MISSING_MOD_IDS = new ConcurrentSkipListSet<>();
 
     private static final DataContentUpdater V1_TO_2 = new SchematicUpdater1_to_2();
-    private static final ResourceKey CATALOG_KEY = ResourceKey.sponge("schematic");
 
     @Nullable private static DataFixer VANILLA_FIXER;
 
@@ -173,19 +172,18 @@ public class SchematicTranslator implements DataTranslator<Schematic> {
         }
         final Palette<BlockState, BlockType> palette;
         final Optional<DataView> paletteData = updatedView.getView(Constants.Sponge.Schematic.BLOCK_PALETTE);
-        final int palette_max = updatedView.getInt(Constants.Sponge.Schematic.BLOCK_PALETTE_MAX).orElse(0xFFFF);
         if (paletteData.isPresent()) {
+            final DataView paletteMap = paletteData.get();
+            final Set<DataQuery> paletteKeys = paletteMap.keys(false);
             // If we had a default palette_max we don't want to allocate all
             // that space for nothing so we use a sensible default instead
             final MutableBimapPalette<BlockState, BlockType> bimap = new MutableBimapPalette<>(
                 PaletteTypes.BLOCK_STATE_PALETTE.get(),
                 Sponge.game().registries().registry(RegistryTypes.BLOCK_TYPE),
                 RegistryTypes.BLOCK_TYPE,
-                palette_max != 0xFFFF ? palette_max : 64
+                paletteKeys.size()
             );
             palette = bimap;
-            final DataView paletteMap = paletteData.get();
-            final Set<DataQuery> paletteKeys = paletteMap.keys(false);
             for (final DataQuery key : paletteKeys) {
                 final BlockState state = BlockStateSerializerDeserializer.deserialize(key.parts().get(0))
                     .orElseGet(() -> BlockTypes.BEDROCK.get().defaultState());
@@ -197,16 +195,16 @@ public class SchematicTranslator implements DataTranslator<Schematic> {
 
         final Palette<Biome, Biome> biomePalette;
         final Optional<DataView> biomePaletteData = updatedView.getView(Constants.Sponge.Schematic.BIOME_PALETTE);
-        final int biome_max = updatedView.getInt(Constants.Sponge.Schematic.BIOME_PALETTE_MAX).orElse(0xFFFF);
         if (biomePaletteData.isPresent()) {
+            final DataView biomeMap = biomePaletteData.get();
+            final Set<DataQuery> biomeKeys = biomeMap.keys(false);
             final MutableBimapPalette<Biome, Biome> bimap = new MutableBimapPalette<>(
                 PaletteTypes.BIOME_PALETTE.get(),
                 Sponge.game().registries().registry(RegistryTypes.BIOME),
                 RegistryTypes.BIOME,
-                biome_max != 0xFFF ? palette_max : 64);
+                biomeKeys.size());
             biomePalette = bimap;
-            final DataView biomeMap = biomePaletteData.get();
-            final Set<DataQuery> biomeKeys = biomeMap.keys(false);
+
             for (final DataQuery biomeKey : biomeKeys) {
                 final ResourceKey key = ResourceKey.resolve(biomeKey.parts().get(0));
                 final Biome biome = Sponge.game().registries().registry(RegistryTypes.BIOME).findValue(key).get();
@@ -408,46 +406,22 @@ public class SchematicTranslator implements DataTranslator<Schematic> {
         }
 
         SchematicTranslator.writePaletteToView(data, palette, schematic.blockStateRegistry(), Constants.Sponge.Schematic.BLOCK_PALETTE, BlockState::type, requiredMods);
-        data.set(Constants.Sponge.Schematic.BLOCK_PALETTE_MAX, palette.highestId());
 
         SchematicTranslator.writePaletteToView(data, biomePalette, schematic.biomeRegistry(), Constants.Sponge.Schematic.BIOME_PALETTE, Function.identity(), requiredMods);
-        data.set(Constants.Sponge.Schematic.BIOME_PALETTE_MAX, biomePalette.highestId());
 
-
-        final Registry<BlockEntityType> blockEntityRegistry = Sponge.game().registries().registry(
-            RegistryTypes.BLOCK_ENTITY_TYPE);
-        final Palette.Mutable<BlockEntityType, BlockEntityType> blockEntityTypePalette = new MutableBimapPalette<>(
-            PaletteTypes.BLOCK_ENTITY_PALETTE.get(),
-            blockEntityRegistry, RegistryTypes.BLOCK_ENTITY_TYPE
-        );
         final List<DataView> blockEntities = schematic.blockEntityArchetypes().entrySet().stream().map(entry -> {
             final Vector3i pos = entry.getKey();
             final BlockEntityArchetype archetype = entry.getValue();
             final DataContainer entityData = archetype.blockEntityData();
             final int[] apos = new int[] {pos.x() - xMin, pos.y() - yMin, pos.z() - zMin};
             entityData.set(Constants.Sponge.Schematic.BLOCKENTITY_POS, apos);
-            blockEntityTypePalette.orAssign(archetype.blockEntityType());
             return entityData;
         }).collect(Collectors.toList());
 
-        SchematicTranslator.writePaletteToView(data, blockEntityTypePalette, blockEntityRegistry, Constants.Sponge.Schematic.BLOCK_ENTITY_PALETTE, Function.identity(), requiredMods);
         data.set(Constants.Sponge.Schematic.BLOCKENTITY_DATA, blockEntities);
 
-        final Registry<EntityType<?>> entityRegistry = Sponge.game().registries().registry(RegistryTypes.ENTITY_TYPE);
-        final Palette.Mutable<EntityType<@NonNull ?>, EntityType<@NonNull ?>> entityTypePalette = new MutableBimapPalette<>(
-            PaletteType.<EntityType<@NonNull ?>, EntityType<@NonNull ?>>builder()
-                .resolver((str, registry) -> registry.findValue(ResourceKey.resolve(str)))
-                .stringifier((registry, obj) -> registry.findValueKey(obj)
-                    .orElseThrow(() -> new IllegalArgumentException("Unregistered EntityType"))
-                    .asString()
-                )
-            .build(),
-            entityRegistry,
-            RegistryTypes.ENTITY_TYPE
-        );
         final List<DataView> entities = schematic.entityArchetypesByPosition().stream().map(entry -> {
             final DataContainer entityData = entry.archetype().entityData();
-            entityTypePalette.orAssign(entry.archetype().type());
 
             final List<Double> entityPosition = new ArrayList<>();
             entityPosition.add(entry.position().x());
@@ -456,7 +430,6 @@ public class SchematicTranslator implements DataTranslator<Schematic> {
             entityData.set(Constants.Sponge.Schematic.ENTITIES_POS, entityPosition);
             return entityData;
         }).collect(Collectors.toList());
-        SchematicTranslator.writePaletteToView(data, entityTypePalette, entityRegistry, Constants.Sponge.Schematic.ENTITY_TYPE_PALETTE, Function.identity(), requiredMods);
 
         data.set(Constants.Sponge.Schematic.ENTITIES, entities);
 

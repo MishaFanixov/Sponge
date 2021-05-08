@@ -24,25 +24,17 @@
  */
 package org.spongepowered.test.volumestream;
 
-import com.google.inject.Inject;
-import net.kyori.adventure.identity.Identity;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.TextComponent;
-import net.kyori.adventure.text.event.HoverEvent;
-import net.kyori.adventure.text.format.NamedTextColor;
-import org.apache.logging.log4j.Logger;
+import org.spongepowered.api.Server;
 import org.spongepowered.api.Sponge;
 import org.spongepowered.api.block.BlockSnapshot;
 import org.spongepowered.api.command.Command;
 import org.spongepowered.api.command.CommandResult;
+import org.spongepowered.api.command.exception.CommandException;
 import org.spongepowered.api.command.parameter.CommandContext;
 import org.spongepowered.api.command.parameter.Parameter;
-import org.spongepowered.api.command.parameter.managed.Flag;
 import org.spongepowered.api.config.ConfigDir;
 import org.spongepowered.api.data.persistence.DataContainer;
 import org.spongepowered.api.data.persistence.DataFormats;
-import org.spongepowered.api.data.type.HandType;
-import org.spongepowered.api.data.type.HandTypes;
 import org.spongepowered.api.entity.living.player.Player;
 import org.spongepowered.api.entity.living.player.server.ServerPlayer;
 import org.spongepowered.api.event.Cancellable;
@@ -53,9 +45,16 @@ import org.spongepowered.api.event.block.InteractBlockEvent;
 import org.spongepowered.api.event.cause.entity.SpawnTypes;
 import org.spongepowered.api.event.filter.cause.Root;
 import org.spongepowered.api.event.lifecycle.RegisterCommandEvent;
+import org.spongepowered.api.event.lifecycle.StoppingEngineEvent;
 import org.spongepowered.api.item.ItemTypes;
-import org.spongepowered.api.world.BlockChangeFlags;
+import org.spongepowered.api.registry.RegistryHolder;
+import org.spongepowered.api.registry.RegistryTypes;
+import org.spongepowered.api.world.Locatable;
+import org.spongepowered.api.world.World;
+import org.spongepowered.api.world.biome.Biome;
+import org.spongepowered.api.world.biome.Biomes;
 import org.spongepowered.api.world.schematic.Schematic;
+import org.spongepowered.api.world.server.ServerWorld;
 import org.spongepowered.api.world.volume.archetype.ArchetypeVolume;
 import org.spongepowered.api.world.volume.stream.StreamOptions;
 import org.spongepowered.api.world.volume.stream.VolumeApplicators;
@@ -66,8 +65,17 @@ import org.spongepowered.plugin.PluginContainer;
 import org.spongepowered.plugin.jvm.Plugin;
 import org.spongepowered.test.LoadableModule;
 
-import java.io.File;
-import java.io.FileOutputStream;
+import com.google.inject.Inject;
+import io.leangen.geantyref.TypeToken;
+import net.kyori.adventure.identity.Identity;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.event.HoverEvent;
+import net.kyori.adventure.text.format.NamedTextColor;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.Logger;
+import org.checkerframework.checker.nullness.qual.NonNull;
+
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -75,7 +83,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Stream;
 import java.util.zip.GZIPOutputStream;
 
 @Plugin("volumestreamtest")
@@ -97,15 +107,63 @@ public final class VolumeStreamTest implements LoadableModule {
         }
         return data;
     }
+
     @Override
     public void enable(final CommandContext ctx) {
         Sponge.eventManager().registerListeners(this.plugin, this.listener);
     }
 
     @Listener
-    public void onGamePreInitialization(final RegisterCommandEvent<Command.Parameterized> event) throws IOException {
+    public void onShutdown(final StoppingEngineEvent<@NonNull Server> serverShutdown) {
+        this.logger.log(Level.ERROR, "Clearing player clipboards");
+        VolumeStreamTest.player_data.clear();
+    }
+
+    @Listener
+    public void onGamePreInitialization(final RegisterCommandEvent<Command.Parameterized> event) throws IOException, CommandException {
         this.schematicsDir = this.config.resolve("schematics");
-        Files.createDirectories(this.schematicsDir);
+        Files.createDirectories(this.config);
+        final Parameter.Value<Biome> biomeKey = Parameter.registryElement(
+            TypeToken.get(Biome.class),
+            Parameter.registryFromOptions(Parameter.registryByWorld(), Parameter.registryByLocatable()),
+            RegistryTypes.BIOME,
+            "minecraft").key("format")
+            .build();
+        event.register(
+            this.plugin,
+            Command.builder()
+                .shortDescription(Component.text("Sets the biome in a selected region"))
+                .permission(this.plugin.metadata().id() + ".command.setbiome")
+                .addParameter(biomeKey)
+                .executor(src -> {
+                    if (!(src.cause().root() instanceof ServerPlayer)) {
+                        src.sendMessage(Identity.nil(), Component.text("Player only.", NamedTextColor.RED));
+                        return CommandResult.success();
+                    }
+                    final ServerPlayer player = (ServerPlayer) src.cause().root();
+                    final PlayerData data = VolumeStreamTest.get(player);
+                    if (data.getPos1() == null || data.getPos2() == null) {
+                        player.sendMessage(
+                            Identity.nil(),
+                            Component.text("You must set both positions before copying", NamedTextColor.RED)
+                        );
+                        return CommandResult.success();
+                    }
+                    final Vector3i min = data.getPos1().min(data.getPos2());
+                    final Vector3i max = data.getPos1().max(data.getPos2());
+                    final Biome target = src.requireOne(biomeKey);
+                    player.world().biomeStream(min, max, StreamOptions.forceLoadedAndCopied())
+                        .map((world, biome, x, y, z) -> target)
+                        .apply(VolumeCollectors.of(
+                            player.world(),
+                            VolumePositionTranslators.identity(),
+                            VolumeApplicators.applyBiomes()
+                        ));
+                    return CommandResult.success();
+                })
+            .build(),
+            "setBiome"
+        );
         event.register(
             this.plugin,
             Command.builder()
@@ -119,25 +177,30 @@ public final class VolumeStreamTest implements LoadableModule {
                     final Player player = (Player) src.cause().root();
                     final PlayerData data = VolumeStreamTest.get(player);
                     if (data.getPos1() == null || data.getPos2() == null) {
-                        player.sendMessage(Identity.nil(), Component.text("You must set both positions before copying", NamedTextColor.RED));
+                        player.sendMessage(
+                            Identity.nil(),
+                            Component.text("You must set both positions before copying", NamedTextColor.RED)
+                        );
                         return CommandResult.success();
                     }
                     final Vector3i min = data.getPos1().min(data.getPos2());
                     final Vector3i max = data.getPos1().max(data.getPos2());
                     data.setOrigin(player.blockPosition());
-                    final ArchetypeVolume archetypeVolume = player.world().createArchetypeVolume(min, max, player.blockPosition());
+                    final ArchetypeVolume archetypeVolume = player.world().createArchetypeVolume(
+                        min, max, player.blockPosition());
                     data.setClipboard(archetypeVolume);
                     player.sendMessage(Identity.nil(), Component.text("Saved to clipboard.", NamedTextColor.GREEN));
                     return CommandResult.success();
                 }).build(),
             "copy"
         );
-        event.register(this.plugin,
+        event.register(
+            this.plugin,
             Command.builder()
                 .shortDescription(Component.text("Pastes your clipboard to where you are standing"))
                 .permission(this.plugin.metadata().id() + ".command.paste")
                 .executor(src -> {
-                    if (!(src.cause().root()  instanceof ServerPlayer)) {
+                    if (!(src.cause().root() instanceof ServerPlayer)) {
                         src.sendMessage(Identity.nil(), Component.text("Player only.", NamedTextColor.RED));
                         return CommandResult.success();
                     }
@@ -145,14 +208,18 @@ public final class VolumeStreamTest implements LoadableModule {
                     final PlayerData data = VolumeStreamTest.get(player);
                     final ArchetypeVolume volume = data.getClipboard();
                     if (volume == null) {
-                        player.sendMessage(Identity.nil(), Component.text("You must copy something before pasting", NamedTextColor.RED));
+                        player.sendMessage(
+                            Identity.nil(),
+                            Component.text("You must copy something before pasting", NamedTextColor.RED)
+                        );
                         return CommandResult.success();
                     }
                     try (final CauseStackManager.StackFrame frame = Sponge.server().causeStackManager().pushCauseFrame()) {
                         frame.pushCause(this.plugin);
                         volume.applyToWorld(player.world(), player.blockPosition(), SpawnTypes.PLACEMENT::get);
                     }
-                    src.sendMessage(Identity.nil(), Component.text("Pasted clipboard into world.", NamedTextColor.GREEN));
+                    src.sendMessage(
+                        Identity.nil(), Component.text("Pasted clipboard into world.", NamedTextColor.GREEN));
                     return CommandResult.success();
                 }).build(),
             "paste"
@@ -160,13 +227,14 @@ public final class VolumeStreamTest implements LoadableModule {
         final Parameter.Value<String> formatKey = Parameter.string().key("format")
             .usage(key -> "legacy, sponge")
             .build();
-        event.register(this.plugin,
+        event.register(
+            this.plugin,
             Command.builder()
                 .shortDescription(Component.text("Pastes your clipboard to where you are standing"))
                 .permission(this.plugin.metadata().id() + ".command.paste")
                 .addParameter(formatKey)
                 .executor(src -> {
-                    if (!(src.cause().root()  instanceof ServerPlayer)) {
+                    if (!(src.cause().root() instanceof ServerPlayer)) {
                         src.sendMessage(Identity.nil(), Component.text("Player only.", NamedTextColor.RED));
                         return CommandResult.success();
                     }
@@ -175,11 +243,19 @@ public final class VolumeStreamTest implements LoadableModule {
                     final PlayerData data = VolumeStreamTest.get(player);
                     final ArchetypeVolume volume = data.getClipboard();
                     if (volume == null) {
-                        player.sendMessage(Identity.nil(), Component.text("You must copy something before pasting", NamedTextColor.RED));
+                        player.sendMessage(
+                            Identity.nil(),
+                            Component.text("You must copy something before pasting", NamedTextColor.RED)
+                        );
                         return CommandResult.success();
                     }
                     if (!"legacy".equalsIgnoreCase(format) && !"sponge".equalsIgnoreCase(format)) {
-                        player.sendMessage(Identity.nil(), Component.text("Unsupported schematic format, supported formats are [legacy, sponge]", NamedTextColor.RED));
+                        player.sendMessage(
+                            Identity.nil(),
+                            Component.text("Unsupported schematic format, supported formats are [legacy, sponge]",
+                                NamedTextColor.RED
+                            )
+                        );
                         return CommandResult.success();
                     }
                     final Schematic schematic = Schematic.builder()
@@ -188,13 +264,18 @@ public final class VolumeStreamTest implements LoadableModule {
                         .metaValue(Schematic.METADATA_NAME, "some_schematic")
                         .build();
                     final DataContainer schematicData = Sponge.dataManager().translator(Schematic.class)
-                        .orElseThrow(() -> new IllegalStateException("Sponge doesn't have a DataTranslator for Schematics!"))
+                        .orElseThrow(
+                            () -> new IllegalStateException("Sponge doesn't have a DataTranslator for Schematics!"))
                         .translate(schematic);
 
                     try {
                         final Path output = Files.createFile(this.schematicsDir.resolve("some_schematic.schematic"));
-                        DataFormats.NBT.get().writeTo(new GZIPOutputStream(Files.newOutputStream(output)), schematicData);
-                        player.sendMessage(Identity.nil(), Component.text("Saved schematic to " + output.toAbsolutePath(), NamedTextColor.GREEN));
+                        DataFormats.NBT.get().writeTo(
+                            new GZIPOutputStream(Files.newOutputStream(output)), schematicData);
+                        player.sendMessage(
+                            Identity.nil(),
+                            Component.text("Saved schematic to " + output.toAbsolutePath(), NamedTextColor.GREEN)
+                        );
                     } catch (final Exception e) {
                         e.printStackTrace();
                         final StringWriter writer = new StringWriter();
@@ -211,7 +292,8 @@ public final class VolumeStreamTest implements LoadableModule {
                         return CommandResult.builder()
                             .error(text).build();
                     }
-                    src.sendMessage(Identity.nil(), Component.text("Pasted clipboard into world.", NamedTextColor.GREEN));
+                    src.sendMessage(
+                        Identity.nil(), Component.text("Pasted clipboard into world.", NamedTextColor.GREEN));
                     return CommandResult.success();
                 }).build(),
             "save"
@@ -227,7 +309,8 @@ public final class VolumeStreamTest implements LoadableModule {
                 final BlockSnapshot block = event.block();
                 if (snapshot.type().equals(ItemTypes.WOODEN_AXE.get()) && block != BlockSnapshot.empty()) {
                     VolumeStreamTest.get(player).setPos1(block.position());
-                    player.sendMessage(Component.text("Position 1 set to " + block.position(), NamedTextColor.LIGHT_PURPLE));
+                    player.sendMessage(
+                        Component.text("Position 1 set to " + block.position(), NamedTextColor.LIGHT_PURPLE));
 
                     if (event instanceof Cancellable) {
                         ((Cancellable) event).setCancelled(true);
@@ -242,7 +325,8 @@ public final class VolumeStreamTest implements LoadableModule {
                 final BlockSnapshot block = event.block();
                 if (snapshot.type().equals(ItemTypes.WOODEN_AXE.get()) && block != BlockSnapshot.empty()) {
                     VolumeStreamTest.get(player).setPos2(block.position());
-                    player.sendMessage(Component.text("Position 2 set to " + block.position(), NamedTextColor.LIGHT_PURPLE));
+                    player.sendMessage(
+                        Component.text("Position 2 set to " + block.position(), NamedTextColor.LIGHT_PURPLE));
                     event.setCancelled(true);
                 }
             });

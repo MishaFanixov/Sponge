@@ -44,6 +44,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkSource;
 import net.minecraft.world.level.chunk.ChunkStatus;
+import net.minecraft.world.level.chunk.EmptyLevelChunk;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.storage.LevelData;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
@@ -60,8 +61,10 @@ import org.spongepowered.api.world.HeightTypes;
 import org.spongepowered.api.world.Location;
 import org.spongepowered.api.world.ProtoWorld;
 import org.spongepowered.api.world.World;
+import org.spongepowered.api.world.biome.Biome;
 import org.spongepowered.api.world.chunk.Chunk;
 import org.spongepowered.api.world.volume.archetype.ArchetypeVolume;
+import org.spongepowered.api.world.volume.biome.BiomeVolume;
 import org.spongepowered.api.world.volume.stream.StreamOptions;
 import org.spongepowered.api.world.volume.stream.VolumeApplicators;
 import org.spongepowered.api.world.volume.stream.VolumeCollectors;
@@ -109,7 +112,9 @@ public abstract class LevelMixin_API<W extends World<W, L>, L extends Location<W
     @Shadow public abstract void shadow$setBlockEntity(BlockPos pos, @javax.annotation.Nullable net.minecraft.world.level.block.entity.BlockEntity tileEntityIn);
     @Shadow public abstract void shadow$removeBlockEntity(BlockPos pos);
     @Shadow public abstract ResourceKey<net.minecraft.world.level.Level> shadow$dimension();
+    @Shadow public abstract LevelChunk shadow$getChunkAt(BlockPos param0);
     // @formatter:on
+
 
     private Context impl$context;
 
@@ -388,5 +393,17 @@ public abstract class LevelMixin_API<W extends World<W, L>, L extends Location<W
                 return new Tuple<>(entity.blockPosition(), entity);
             }
         );
+    }
+
+    @SuppressWarnings("rawtypes")
+    @Override
+    public boolean setBiome(final int x, final int y, final int z, final Biome biome) {
+        if (!((Level) (Object) this).hasChunk(x << 4, z << 4)) {
+            return false;
+        }
+        final LevelChunk levelChunk = this.shadow$getChunkAt(new BlockPos(x, y, z));
+        // technically we don't like to forward to the api, but this
+        // is implemented by LevelChunkMixin_API
+        return ((BiomeVolume.Mutable) levelChunk).setBiome(x, y, z, biome);
     }
 }

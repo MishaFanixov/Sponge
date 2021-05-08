@@ -25,6 +25,8 @@
 package org.spongepowered.common.world.volume;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Registry;
+import net.minecraft.data.BuiltinRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.util.Tuple;
 import net.minecraft.world.level.ChunkPos;
@@ -97,6 +99,10 @@ public final class VolumeStreamUtils {
             final @Nullable T weaklyReferenced = weakReference.get();
             return Objects.requireNonNull(weaklyReferenced, () -> String.format("%s de-referenced!", name));
         };
+    }
+
+    public static <MC, T> org.spongepowered.api.registry.Registry<T> nativeToSpongeRegistry(final Registry<MC> registry) {
+        return (org.spongepowered.api.registry.Registry<T>) (org.spongepowered.api.registry.Registry) registry;
     }
 
     public static Predicate<org.spongepowered.api.util.Tuple<Vector3d, EntityArchetype>> entityArchetypePositionFilter(final Vector3i min, final Vector3i max) {
@@ -413,6 +419,7 @@ public final class VolumeStreamUtils {
         );
     }
 
+    @SuppressWarnings("unchecked")
     public static <R extends Region<R>> VolumeStream<R, org.spongepowered.api.world.biome.Biome> getBiomeStream(final LevelReader reader, final Vector3i min, final Vector3i max, final StreamOptions options) {
         VolumeStreamUtils.validateStreamArgs(Objects.requireNonNull(min, "min"), Objects.requireNonNull(max, "max"),
             Objects.requireNonNull(options, "options"));
@@ -421,7 +428,13 @@ public final class VolumeStreamUtils {
         final Vector3i size = max.sub(min).add(1, 1 ,1);
         final @MonotonicNonNull ObjectArrayMutableBiomeBuffer backingVolume;
         if (shouldCarbonCopy) {
-            backingVolume = new ObjectArrayMutableBiomeBuffer(min, size);
+            final Registry<Biome> biomeRegistry;
+            if (reader instanceof Level) {
+                biomeRegistry = ((Level) reader).registryAccess().registry(Registry.BIOME_REGISTRY).get();
+            } else {
+                biomeRegistry = BuiltinRegistries.BIOME;
+            }
+            backingVolume = new ObjectArrayMutableBiomeBuffer(min, size, VolumeStreamUtils.nativeToSpongeRegistry(biomeRegistry));
         } else {
             backingVolume = null;
         }
